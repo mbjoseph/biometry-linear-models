@@ -1,0 +1,369 @@
+---
+title: "Intro to linear regression"
+author: "Max Joseph"
+date: "March 07, 2017"
+output:
+  beamer_presentation:
+    fonttheme: "structurebold"
+    fig_caption: false
+    fig_crop: true
+header-includes: 
+- \beamertemplatenavigationsymbolsempty
+- \definecolor{foreground}{RGB}{0,0,0}
+- \definecolor{background}{RGB}{255,255,255}
+- \definecolor{title}{RGB}{0,120,255}
+- \definecolor{gray}{RGB}{155,155,155}
+- \definecolor{subtitle}{RGB}{204,0,0}
+- \definecolor{hilight}{RGB}{102,255,204}
+- \definecolor{vhilight}{RGB}{255,111,207}
+- \setbeamercolor{titlelike}{fg=title}
+- \setbeamercolor{subtitle}{fg=subtitle}
+- \setbeamercolor{institute}{fg=gray}
+- \setbeamercolor{normal text}{fg=foreground,bg=background}
+- \setbeamercolor{local structure}{fg=title}
+- \setbeamertemplate{frametitle}{\begin{centering} \insertframetitle \par \end{centering}}
+---
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(fig.width=3.5, fig.height=2.8,
+                      fig.align='center', echo = FALSE,
+                      warning=FALSE, message=FALSE)
+library(tidyverse)
+library(gridExtra)
+theme_set(theme_minimal())
+```
+
+# Situation
+
+**How to predict birth weight?**
+
+```{r}
+d <- read_csv("http://esapubs.org/archive/ecol/E096/269/Data_Files/Amniote_Database_Aug_2015.csv", 
+              na = c("-999", "NA"))
+d <- d %>%
+  filter(order == "Rodentia") %>%
+  select(adult_body_mass_g, birth_or_hatching_weight_g) %>%
+  na.omit
+
+n <- nrow(d)
+x <- log(d$adult_body_mass_g)
+y <- log(d$birth_or_hatching_weight_g)
+
+p0 <- tibble(x, y) %>%
+  ggplot(aes(x, y)) + 
+  geom_point(size = .3) + 
+  xlab("log(Adult body mass)") + 
+  ylab("log(Birth weight)")
+p0
+```
+
+# Spoiler alert
+
+```{r}
+p0 + 
+  geom_smooth(method = "lm", se = FALSE)
+```
+
+# Which line to draw?
+
+```{r}
+p0
+```
+
+# Simple linear regression
+
+We have pairs $(y_i, x_i)$ for $i = 1, 2, ..., n$
+
+$$y_i = \beta_0 + \beta_1 x_i + \epsilon_i$$
+
+# Assumption
+
+1. **Linear relationship between $x$ and $y$**
+
+# In context
+
+$$y_i = \beta_0 + \beta_1 x_i + \epsilon_i$$
+
+```{r}
+p0 + geom_smooth(method = "lm", se = FALSE)
+```
+
+# Deterministic vs. stochastic parts
+
+$$y_i = \beta_0 + \beta_1 x_i + \epsilon_i$$
+
+**Deterministic**
+
+$$\hat{y_i} = \beta_0 + \beta_1 x_i$$
+
+- for any $x_i$, the value of $\hat{y_i}$ is always the same.
+
+# Deterministic vs. stochastic parts
+
+$$y_i = \beta_0 + \beta_1 x_i + \epsilon_i$$
+
+**Deterministic**
+
+$$\hat{y_i} = \beta_0 + \beta_1 x_i$$
+
+**What is stochastic?**
+
+# Stochastic error!
+
+```{r}
+m <- lm(y ~ x)
+p1 <- tibble(x, y, fitted = fitted(m), resid = resid(m)) %>%
+  ggplot(aes(x, y)) + 
+  geom_smooth(method = "lm", se = FALSE) + 
+  geom_segment(aes(xend = x, y = fitted, yend = resid + fitted), 
+               col = "red", size = .3) + 
+  geom_point(size = .3) + 
+  xlab("log(Adult body mass)") + 
+  ylab("log(Birth weight)")
+
+p1
+```
+
+# What distribution could work for the errors?
+
+```{r, fig.height = 2}
+p3 <- tibble(x, y, fitted = fitted(m), resid = resid(m)) %>%
+  ggplot(aes(x = x, y = resid)) + 
+  geom_segment(aes(x = x, xend = x, y = 0, yend = resid), col = "red", size = .3) + 
+  geom_point(size = .3) + 
+  xlab("log(Adult body mass)") + 
+  ylab(expression(y - hat(y))) + 
+  geom_hline(yintercept = 0, color = "blue")
+
+grid.arrange(p1, p3, nrow = 1)
+```
+
+# Error histogram
+
+```{r, fig.height = 2}
+p2 <- tibble(x, y, fitted = fitted(m), resid = resid(m)) %>%
+  ggplot(aes(resid)) +
+  geom_histogram(fill = "red") + 
+  xlab(expression(y - hat(y))) + 
+  ylab("Count") + 
+  coord_flip()
+
+grid.arrange(p3, p2, nrow = 1)
+```
+
+# How about Normal error
+
+```{r}
+xvals <- seq(from = min(resid(m)), 
+             to = max(resid(m)), 
+             length.out = 100)
+norm_curve <- dnorm(xvals, mean = 0, sd = sigma(m)) 
+norm_curve <- (norm_curve / max(norm_curve)) * 65
+
+p2 + 
+  geom_path(aes(x, y), inherit.aes = FALSE, 
+            data = tibble(x = xvals, y = norm_curve)) + 
+  geom_vline(xintercept = 0, linetype = "dashed")
+```
+
+# Assumption
+
+1. Linear relationship between $x$ and $y$
+1. **Normal error (variation around line)**
+
+# Another look
+
+![](http://bolt.mph.ufl.edu/files/2012/07/linreg7.png)
+
+http://bolt.mph.ufl.edu/6050-6052/unit-4b/module-15/
+
+# Linear regression and normality
+
+**Deterministic component**
+
+$$\hat{y_i} = \beta_0 + \beta_1 x_i$$
+
+**Stochastic component**
+
+$$y_i \sim \text{Normal}(\hat{y_i}, \sigma)$$
+
+# Assumption
+
+1. Linear relationship between $x$ and $y$
+1. Normal error (variation around line)
+1. **Homoskedasticity (errors have constant variance)**
+
+# What would this plot look like with heteroskedasticity?
+
+![](http://bolt.mph.ufl.edu/files/2012/07/linreg7.png)
+
+# Aside: error in what?
+
+```{r}
+p1
+```
+
+# Aside: error in what?
+
+Error is **orthogonal** to $x$
+
+- $x$ is fixed and known without error
+- **no assumptions** about the normality of $x$
+
+```{r, fig.height = 2.5}
+p1
+```
+
+
+# Maximum likelihood estimation for linear regression
+
+**Goal**
+
+Maximize $L(y; \beta_0, \beta_1, \sigma)$
+
+
+# MLE for linear regression
+
+Likelihood is the joint probability of observations $y_1, y_2, ..., y_n$:
+
+$$L(y; \beta_0, \beta_1, \sigma) = p(y_1, y_2, ..., y_n; \beta_0, \beta_1, \sigma)$$
+
+# MLE for linear regression
+
+Likelihood is the joint probability of observations $y_1, y_2, ..., y_n$:
+
+$$L(y; \beta_0, \beta_1, \sigma) = p(y_1, y_2, ..., y_n; \beta_0, \beta_1, \sigma)$$
+
+Observations are independent, so we multiply probabilities:
+
+$$L(y; \beta_0, \beta_1, \sigma) = p(y_1; \beta_0, \beta_1, \sigma) \times p(y_2; \beta_0, \beta_1, \sigma) \times ... \times p(y_n; \beta_0, \beta_1, \sigma)$$
+
+# Assumption
+
+1. Linear relationship between $x$ and $y$
+1. Normal error (variation around line)
+1. Homoskedasticity (errors have constant variance)
+1. **Observations are independent**
+
+# MLE for linear regression
+
+Likelihood is the joint probability of observations $y_1, y_2, ..., y_n$:
+
+$$L(y; \beta_0, \beta_1, \sigma) = p(y_1, y_2, ..., y_n; \beta_0, \beta_1, \sigma)$$
+Observations are independent, so we multiply probabilities:
+
+$$L(y; \beta_0, \beta_1, \sigma) = p(y_1; \beta_0, \beta_1, \sigma) \times p(y_2; \beta_0, \beta_1, \sigma) \times ... \times p(y_n; \beta_0, \beta_1, \sigma)$$
+
+We are lazy, so we use product notation:
+
+$$L(y; \beta_0, \beta_1, \sigma) = \prod_{i = 1}^{n}p(y_i; \beta_0, \beta_1, \sigma)$$
+
+# But how to we get $p(y_i; \beta_0, \beta_1, \sigma)$?
+
+$$L(y; \beta_0, \beta_1, \sigma) = \prod_{i = 1}^{n}p(y_i; \beta_0, \beta_1, \sigma)$$
+
+# Getting normal probability densities in R
+
+```{r, echo = TRUE}
+yvals <- seq(-4, 4, length.out = 100)
+py <- dnorm(yvals, mean = 0, sd = 1)
+plot(yvals, py)
+```
+
+# Getting normal probability densities for linear regression
+
+$$\hat{y_i} = \beta_0 + \beta_1 x_i$$
+
+$$y_i \sim \text{Normal}(\hat{y_i}, \sigma)$$
+
+
+```{r, echo = TRUE, eval = FALSE}
+y_hat <- beta0 + beta1 * x
+dnorm(y, mean = y_hat, sd = sigma)
+```
+
+# MLE for linear regression
+
+$$L(y; \beta_0, \beta_1, \sigma) = \prod_{i = 1}^{n}p(y_i; \beta_0, \beta_1, \sigma)$$
+
+In R: 
+
+```r
+prod(dnorm(y, mean = yhat, sd = sigma))
+```
+
+# Why can't we work with this directly?
+
+
+$$L(y; \beta_0, \beta_1, \sigma) = \prod_{i = 1}^{n}p(y_i; \beta_0, \beta_1, \sigma)$$
+
+```r
+prod(dnorm(y, mean = yhat, sd = sigma))
+```
+
+
+# Log-likelihood to avoid underflow
+
+$$\log(L(y; \beta_0, \beta_1, \sigma)) = \log(\prod_{i = 1}^{n}p(y_i; \beta_0, \beta_1, \sigma))$$
+
+$$= \sum_{i = 1}^{n} \log(p(y_i; \beta_0, \beta_1, \sigma))$$
+
+because $\log(ab) = \log(a) + \log(b)$
+
+```r
+sum(dnorm(y, mean = yhat, sd = sigma, log = TRUE))
+```
+
+# One last thing...
+
+We typically use the *negative log likelihood*: 
+
+
+$$- \log(L(y; \beta_0, \beta_1, \sigma)) = - \sum_{i = 1}^{n} \log(p(y_i; \beta_0, \beta_1, \sigma))$$
+
+# Acquiring estimates in R
+
+# Specifying a negative log likelihood function
+
+```{r, echo = TRUE}
+nll <- function(pars, x, y) {
+  b0 <- pars[1]
+  b1 <- pars[2]
+  sigma <- exp(pars[3])
+  y_hat <- b0 + b1 * x
+  -sum(dnorm(y, y_hat, sigma, log = TRUE))
+}
+```
+
+# Minimizing the negative log likelihood
+
+```{r, echo = TRUE, results='markup'}
+fit <- optim(c(0, 0, 0), nll, x = x, y = y)
+fit
+```
+
+# Plotting the line
+
+```{r}
+p0 + 
+  geom_abline(intercept = fit$par[1], slope = fit$par[2], color = "dodgerblue")
+```
+
+# Assumptions
+
+1. Linear relationship between $x$ and $y$
+1. Normal error in $y$ (variation around line)
+1. Homoskedasticity (errors have constant variance)
+1. Observations are independent
+
+
+
+# Questions?
+
+What we covered:
+
+- linear model structure & assumptions
+- defining a likelihood
+- writing a negative log likelihood function in R
+- minimizing the negative log likelihood with `optim()`
+
