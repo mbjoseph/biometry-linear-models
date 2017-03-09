@@ -2,14 +2,9 @@
 # Demonstrating Hessians and the curvature of a likelihood ----------------
 
 # We'll assume a simple model: 
-# - we only want to estimate a standard deviation
-# - our variable is normally distributed
+# - we only want to estimate a mean
+# - our variable y is normally distributed
 # - we know the true value of the standard deviation is one
-
-n1 <- 5
-true_mean <- 1
-y <- rnorm(n1, mean = true_mean)
-
 
 
 # negative log likelihood function
@@ -17,13 +12,17 @@ nll <- function(par, y) {
   -sum(dnorm(y, mean = par, log = TRUE))
 }
 
+true_mean <- 1
 
 
-# get our MLE
+# First simulation: small sample size -------------------------------------
+
+n1 <- 5
+y <- rnorm(n1, mean = true_mean)
+
+# get maximum likelihood estimate
 fit_1 <- optim(0, nll, y = y, hessian = TRUE, method = "L-BFGS-B")
 hess_1 <- fit_1$hessian
-
-
 
 # evaluate the negative log likelihood across a range of values
 par_range <- seq(-4, 20, length.out = 100)
@@ -36,37 +35,30 @@ plot(par_range, nll_values,
 abline(v = true_mean, lty = 2, col = "grey")
 
 
+# Second simulation: slightly more data -----------------------------------
 
-
-
-
-
-
-# now do the same thing with more data
 n2 <- 20
 y <- rnorm(n2, mean = true_mean)
-lines(par_range, sapply(par_range, nll, y), col = 2)
 
 fit_2 <- optim(0, nll, y = y, hessian = TRUE, method = "L-BFGS-B")
 hess_2 <- fit_2$hessian
 
+lines(par_range, sapply(par_range, nll, y), col = 2)
 
 
+# Third simulation: the most data -----------------------------------------
 
-
-
-
-
-
-
-
-# now do the same with even more data
 n3 <- 100
 y <- rnorm(n3, mean = true_mean)
-lines(par_range, sapply(par_range, nll, y), col = 3)
 
 fit_3 <- optim(0, nll, y = y, hessian = TRUE, method = "L-BFGS-B")
 hess_3 <- fit_3$hessian
+
+
+lines(par_range, sapply(par_range, nll, y), col = 3)
+
+
+# Finally, add legend and a title to make sense of it all ----------------
 
 legend("bottomright", 
        col = 1:3, 
@@ -76,4 +68,3 @@ legend("bottomright",
        bty = "n")
 
 title("Negative log likelihood profiles\nfor the mean")
-
