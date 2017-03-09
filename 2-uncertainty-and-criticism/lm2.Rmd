@@ -1,0 +1,407 @@
+---
+title: "Parameter uncertainty and model criticism for linear regression"
+author: "Max Joseph"
+date: "March 09, 2017"
+output:
+  beamer_presentation:
+    fonttheme: "structurebold"
+    fig_caption: false
+
+header-includes: 
+- \beamertemplatenavigationsymbolsempty
+- \definecolor{foreground}{RGB}{0,0,0}
+- \definecolor{background}{RGB}{255,255,255}
+- \definecolor{title}{RGB}{0,120,255}
+- \definecolor{gray}{RGB}{155,155,155}
+- \definecolor{subtitle}{RGB}{204,0,0}
+- \definecolor{hilight}{RGB}{102,255,204}
+- \definecolor{vhilight}{RGB}{255,111,207}
+- \setbeamercolor{titlelike}{fg=title}
+- \setbeamercolor{subtitle}{fg=subtitle}
+- \setbeamercolor{institute}{fg=gray}
+- \setbeamercolor{normal text}{fg=foreground,bg=background}
+- \setbeamercolor{local structure}{fg=title}
+- \setbeamertemplate{frametitle}{\begin{centering} \insertframetitle \par \end{centering}}
+---
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(fig.width=3.5, fig.height=2.8,
+                      fig.align='center', echo = FALSE,
+                      warning=FALSE, message=FALSE)
+library(tidyverse)
+library(gridExtra)
+theme_set(theme_minimal())
+```
+
+# Recap
+
+**How to predict birth weight?**
+
+```{r}
+d <- read_csv("http://esapubs.org/archive/ecol/E096/269/Data_Files/Amniote_Database_Aug_2015.csv", 
+              na = c("-999", "NA"))
+d <- d %>%
+  filter(order == "Rodentia") %>%
+  select(adult_body_mass_g, birth_or_hatching_weight_g) %>%
+  na.omit
+
+n <- nrow(d)
+x <- log(d$adult_body_mass_g)
+y <- log(d$birth_or_hatching_weight_g)
+
+p0 <- tibble(x, y) %>%
+  ggplot(aes(x, y)) + 
+  geom_point(size = .3) + 
+  xlab("log(Adult body mass)") + 
+  ylab("log(Birth weight)")
+p0
+```
+
+# Assumptions
+
+1. Linear relationship between $x$ and $y$: $$\hat{y_i} = \beta_0 + \beta_1 x_i$$ 
+1. Normal error in $y$ (variation around line): $$y_i \sim \text{Normal}(\hat{y_i}, \sigma)$$
+1. Homoskedasticity (errors have constant variance)
+1. Observations are independent: $$- \log(L(y; \beta_0, \beta_1, \sigma)) = - \sum_{i = 1}^{n} \log(p(y_i; \beta_0, \beta_1, \sigma))$$
+
+# 
+
+```{r}
+p0 + 
+  geom_smooth(method = "lm", color = "dodgerblue", se = FALSE)
+```
+
+# Today: parameter uncertainty and model criticism
+
+1. How uncertain are our estimates?
+1. How much can the model explain?
+1. Evaluating linearity
+1. Evaluating homoskedasticity
+
+# Evaluating uncertainty
+
+**Standard error**
+
+$$SE = \sqrt{\text{diag}(H^{-1})}$$
+
+```{r, eval = FALSE}
+sqrt(diag(solve(m_fit$hessian)))
+```
+
+# Hessians
+
+**18th century German auxiliaries**
+
+- contracted for military service by the British government
+- $\approx$ 25% of British forces in American Revolutionary War
+- from the German state of Hesse-Kassel
+
+![](https://upload.wikimedia.org/wikipedia/commons/8/8d/Hessian_jager.jpg)
+
+# But what is a Hessian really?
+
+A square matrix of second-order partial deriviatives
+
+$$H = \begin{bmatrix}
+  \dfrac{\partial^2 f}{\partial x_1^2} & \dfrac{\partial^2 f}{\partial x_1\,\partial x_2} & \cdots & \dfrac{\partial^2 f}{\partial x_1\,\partial x_p} \\[2.2ex]
+  \dfrac{\partial^2 f}{\partial x_2\,\partial x_1} & \dfrac{\partial^2 f}{\partial x_2^2} & \cdots & \dfrac{\partial^2 f}{\partial x_2\,\partial x_p} \\[2.2ex]
+  \vdots & \vdots & \ddots & \vdots \\[2.2ex]
+  \dfrac{\partial^2 f}{\partial x_p\,\partial x_1} & \dfrac{\partial^2 f}{\partial x_p\,\partial x_2} & \cdots & \dfrac{\partial^2 f}{\partial x_p^2}
+\end{bmatrix}$$
+
+# What is a Hessian graphically?
+
+Curvature of the log likelihood 
+
+$\rightarrow$ how much information do we have?
+
+```{r fig.width = 6, fig.height = 5}
+source("hess_demo.R")
+```
+
+
+# 
+
+**Recap**
+
+Hessian tell us about curvature
+
+SE tells us about uncertainty
+
+# Computing confidence intervals from SE
+
+Approximation:
+
+$$\text{CI}(\theta) \pm \theta_{\text{MLE}} + t_{\alpha/2} \text{SE}(\theta)$$
+
+```{r, eval = FALSE, echo = TRUE}
+# e.g., 95% confidence interval
+params <- fit$par
+
+sample_size <- length(y)
+n_params <- length(params)
+
+crit_t <- qt(0.025, sample_size - n_params)
+lower_ci <- params[1] + crit_t * SE[1]
+upper_ci <- params[1] - crit_t * SE[1]
+```
+
+
+# Assumption (big one)
+
+The log likelihood profile is quadratic 
+
+- more reliable for large $n$
+
+
+# Confidence interval demo
+
+
+
+# Questions?
+
+$$SE = \sqrt{\text{diag}(H^{-1})}$$
+
+$$\text{CI}(\theta) \pm \theta_{\text{MLE}} + t_{\alpha/2} \text{SE}(\theta)$$
+
+# Deep connections to least squares
+
+Minimizing this:
+
+$$- \log(L(y; \beta_0, \beta_1, \sigma)) = - \sum_{i = 1}^{n} \log(p(y_i; \beta_0, \beta_1, \sigma))$$
+
+Is almost the same as minimizing this: 
+
+$$\sum_{i = 1}^{n} (y_i - \hat{y}_i)^2$$
+
+# Comparing our estimates
+
+
+# Residual sum of squares
+
+Variation in $y$ **around the line**
+
+$$SS_R = \sum_{i = 1}^{n} (y_i - \hat{y}_i)^2$$
+
+```{r, fig.height = 2.2}
+n <- nrow(d)
+x <- log(d$adult_body_mass_g)
+y <- log(d$birth_or_hatching_weight_g)
+m <- lm(y ~ x)
+p_ssr <- tibble(x, y, fitted = fitted(m), resid = resid(m)) %>%
+  ggplot(aes(x, y)) + 
+  geom_smooth(method = "lm", se = FALSE) + 
+  geom_segment(aes(xend = x, y = fitted, yend = resid + fitted), 
+               col = "red", size = .3) + 
+  geom_point(size = .3) + 
+  xlab("log(Adult body mass)") + 
+  ylab("log(Birth weight)")
+
+p_ssr
+```
+
+# Total sum of squares
+
+Variation in $y$ **relative to the sample mean**
+
+$SS_T = \sum_{i = 1}^{n} (y_i - \bar{y})^2$, where $\bar{y} = \dfrac{\sum_{i = 1}^{n} y_i}{n}$
+
+```{r, fig.height = 2.2}
+p_sst <- tibble(x, y, ybar = mean(y)) %>%
+  ggplot(aes(x, y)) + 
+  geom_segment(aes(xend = x, y = y, yend = ybar), 
+               col = "green", size = .3) + 
+  geom_point(size = .3) + 
+  geom_hline(yintercept = mean(y), col = "purple", linetype = "dashed") +
+  geom_text(x = 2.5, y = mean(y) + .25, label = "mean(y)", 
+            color = "purple", size = 2) + 
+  xlab("log(Adult body mass)") + 
+  ylab("log(Birth weight)")
+p_sst
+```
+
+
+# Residual vs. total sum of squares
+
+```{r, fig.width = 4}
+grid.arrange(p_ssr + ggtitle("Diff. from line"), 
+             p_sst + ggtitle("Diff. from mean"), nrow = 1)
+```
+
+# Residual vs. total sum of squares
+
+$$SS_R = \sum_{i = 1}^{n} (y_i - \hat{y}_i)^2$$
+
+$$SS_T = \sum_{i = 1}^{n} (y_i - \bar{y})^2$$
+
+*demo
+
+# How much can our model explain?
+
+**Coefficient of determination**
+
+$$R^2 = 1 - \dfrac{SS_R}{SS_T}$$
+
+
+# Visualizing $R^2$
+
+```{r}
+df <- tibble(x = runif(n), y = rnorm(n, x))
+title <- paste("R^2 =", round(summary(lm(y ~ x, data = df))$r.squared, 3))
+df %>%
+  ggplot(aes(x, y)) + 
+  geom_point() + 
+  stat_smooth(method = "lm", se = FALSE) + 
+  ggtitle(title)
+```
+
+# Visualizing $R^2$
+
+```{r}
+df <- tibble(x = runif(n), y = rnorm(n, 2 * x))
+title <- paste("R^2 =", round(summary(lm(y ~ x, data = df))$r.squared, 3))
+df %>%
+  ggplot(aes(x, y)) + 
+  geom_point() + 
+  stat_smooth(method = "lm", se = FALSE) + 
+  ggtitle(title)
+```
+
+
+
+# Visualizing $R^2$
+
+```{r}
+df <- tibble(x = runif(n), y = rnorm(n, 5 * x))
+title <- paste("R^2 =", round(summary(lm(y ~ x, data = df))$r.squared, 3))
+df %>%
+  ggplot(aes(x, y)) + 
+  geom_point() + 
+  stat_smooth(method = "lm", se = FALSE) + 
+  ggtitle(title)
+```
+
+# Visualizing $R^2$
+
+```{r}
+df <- tibble(x = runif(n), y = rnorm(n, 10 * x))
+title <- paste("R^2 =", round(summary(lm(y ~ x, data = df))$r.squared, 3))
+df %>%
+  ggplot(aes(x, y)) + 
+  geom_point() + 
+  stat_smooth(method = "lm", se = FALSE) + 
+  ggtitle(title)
+```
+
+# Visualizing $R^2$
+
+```{r}
+df <- tibble(x = runif(n), y = rnorm(n, 100 * x))
+title <- paste("R^2 =", round(summary(lm(y ~ x, data = df))$r.squared, 3))
+df %>%
+  ggplot(aes(x, y)) + 
+  geom_point() + 
+  stat_smooth(method = "lm", se = FALSE) + 
+  ggtitle(title)
+```
+
+# Beware $R^2$
+
+$R^2 = 0.666$ for each of these
+
+```{r}
+anscombe %>%
+  gather(param, value) %>%
+  mutate(variable = substring(param, first = 1, last = 1), 
+         set = substring(param, first = 2, last = 2), 
+         idx = rep(1:nrow(anscombe), times = 8)) %>%
+  select(-param) %>%
+  spread(variable, value) %>%
+  ggplot(aes(x, y)) + 
+  geom_point() + 
+  stat_smooth(method = "lm", se = FALSE) + 
+  facet_wrap(~set)
+```
+
+# Computing $R^2$ demo
+
+# Summary: $R^2$
+
+$$R^2 = 1 - \dfrac{SS_R}{SS_T}$$
+
+- how well the line approximates the data
+- bounded between 0 and 1
+
+# Problems with $R^2$
+
+1. Sensitive to the range of $x$
+
+$y \sim \text{Normal}(0 + x, 1)$
+
+```{r}
+df <- tibble(x = runif(n), y = rnorm(n, x))
+title <- paste("R^2 =", round(summary(lm(y ~ x, data = df))$r.squared, 3))
+df %>%
+  ggplot(aes(x, y)) + 
+  geom_point() + 
+  stat_smooth(method = "lm", se = FALSE) + 
+  ggtitle(title)
+```
+
+
+# Problems with $R^2$
+
+$y \sim \text{Normal}(0 + x, 1)$
+
+1. Sensitive to the range of $x$
+
+```{r}
+df <- tibble(x = 10 * runif(n), y = rnorm(n, x))
+title <- paste("R^2 =", round(summary(lm(y ~ x, data = df))$r.squared, 3))
+df %>%
+  ggplot(aes(x, y)) + 
+  geom_point() + 
+  stat_smooth(method = "lm", se = FALSE) + 
+  ggtitle(title)
+```
+
+# Problems with $R^2$
+
+1. Sensitive to the range of $x$
+2. Does not measure prediction error
+- only measures fit to the **training** data
+
+# Problems with $R^2$
+
+1. Sensitive to the range of $x$
+2. Does not measure prediction error
+3. Not comparable among models with different $y$
+
+# Problems with $R^2$
+
+1. Sensitive to the range of $x$
+2. Does not measure prediction error
+3. Not comparable among models with different $y$
+4. We get the same $R^2$ by regressing $x$ on $y$
+
+
+# Problems with $R^2$
+
+1. Sensitive to the range of $x$
+2. Does not measure prediction error
+3. Not comparable among models with different $y$
+4. We get the same $R^2$ by regressing $x$ on $y$
+5. Can calculate $R^2$ for silly models
+- e.g., http://tylervigen.com/spurious-correlations
+
+# Recap for today
+
+1. Quantifying uncertainty in parameters
+
+- reviewed Hessians, standard error, and confidence intervals
+
+2. Introducing $R^2$ (coefficient of determination)
+
+- how to calculate from sums of squares
+- some shortcomings
+
