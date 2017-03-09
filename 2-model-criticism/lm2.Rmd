@@ -1,0 +1,82 @@
+---
+title: "Model criticism for linear regression"
+author: "Max Joseph"
+date: "March 07, 2017"
+output:
+  beamer_presentation:
+    fonttheme: "structurebold"
+    fig_caption: false
+    fig_crop: true
+header-includes: 
+- \beamertemplatenavigationsymbolsempty
+- \definecolor{foreground}{RGB}{0,0,0}
+- \definecolor{background}{RGB}{255,255,255}
+- \definecolor{title}{RGB}{0,120,255}
+- \definecolor{gray}{RGB}{155,155,155}
+- \definecolor{subtitle}{RGB}{204,0,0}
+- \definecolor{hilight}{RGB}{102,255,204}
+- \definecolor{vhilight}{RGB}{255,111,207}
+- \setbeamercolor{titlelike}{fg=title}
+- \setbeamercolor{subtitle}{fg=subtitle}
+- \setbeamercolor{institute}{fg=gray}
+- \setbeamercolor{normal text}{fg=foreground,bg=background}
+- \setbeamercolor{local structure}{fg=title}
+- \setbeamertemplate{frametitle}{\begin{centering} \insertframetitle \par \end{centering}}
+---
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(fig.width=3.5, fig.height=2.8,
+                      fig.align='center', echo = FALSE,
+                      warning=FALSE, message=FALSE)
+library(tidyverse)
+library(gridExtra)
+theme_set(theme_minimal())
+```
+
+# Recap
+
+**How to predict birth weight?**
+
+```{r}
+d <- read_csv("http://esapubs.org/archive/ecol/E096/269/Data_Files/Amniote_Database_Aug_2015.csv", 
+              na = c("-999", "NA"))
+d <- d %>%
+  filter(order == "Rodentia") %>%
+  select(adult_body_mass_g, birth_or_hatching_weight_g) %>%
+  na.omit
+
+n <- nrow(d)
+x <- log(d$adult_body_mass_g)
+y <- log(d$birth_or_hatching_weight_g)
+
+p0 <- tibble(x, y) %>%
+  ggplot(aes(x, y)) + 
+  geom_point(size = .3) + 
+  xlab("log(Adult body mass)") + 
+  ylab("log(Birth weight)")
+p0
+```
+
+# Assumptions
+
+1. Linear relationship between $x$ and $y$: $$\hat{y_i} = \beta_0 + \beta_1 x_i$$ 
+1. Normal error in $y$ (variation around line): $$y_i \sim \text{Normal}(\hat{y_i}, \sigma)$$
+1. Homoskedasticity (errors have constant variance)
+1. Observations are independent: $$- \log(L(y; \beta_0, \beta_1, \sigma)) = - \sum_{i = 1}^{n} \log(p(y_i; \beta_0, \beta_1, \sigma))$$
+
+# 
+
+```{r}
+p0 + 
+  geom_smooth(method = "lm", color = "dodgerblue", se = FALSE)
+```
+
+# Today: model criticism
+
+1. How much can we explain: $R^2$
+2. Evaluating linearity
+3. Evaluating homoskedasticity
+
+# But first a diversion
+
+
