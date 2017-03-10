@@ -39,29 +39,52 @@ abline(a = m_fit$par[1], b = m_fit$par[2], col = 2)
 
 
 
-
-
 # Get standard errors for all parameters ----------------------------------
-
-
-
+H <- m_fit$hessian
+SE <- sqrt(diag(solve(H)))
 
 
 
 # Compute confidence intervals for all parameters -------------------------
+params <- m_fit$par
 
+sample_size <- length(y)
+n_params <- length(params)
 
+crit_t <- qt(0.025, sample_size - n_params)
+lower <- params[2] + crit_t * SE[2]
+upper <- params[2] - crit_t * SE[2]
 
+lower
+upper
 
+# Calculate the least squares regression line
+ssd <- function(pars, x, y) {
+  beta0 <- pars[1]
+  beta1 <- pars[2]
+  yhat <- beta0 + beta1 * x
+  sum((y - yhat)^2)
+}
 
+ss_fit <- optim(c(0, .5), ssd, x = x, y = y)
+ss_fit
+
+m_fit$par
+ss_fit$par
 
 # Compute residual and total sums of squares ------------------------------
+beta0 <- params[1]
+beta1 <- params[2]
 
+yhat <- beta0 + beta1 * x
+plot(x, yhat)
 
+SSR <- sum((y - yhat)^2)
 
-
+ybar <- mean(y)
+SST <- sum((y - ybar)^2)
 
 
 # Compute R^2 -------------------------------------------------------------
-
+R2 <- 1 - SSR / SST
 

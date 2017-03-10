@@ -75,8 +75,6 @@ p0 +
 
 1. How uncertain are our estimates?
 1. How much can the model explain?
-1. Evaluating linearity
-1. Evaluating homoskedasticity
 
 # Evaluating uncertainty
 
@@ -84,6 +82,10 @@ p0 +
 
 $$SE = \sqrt{\text{diag}(H^{-1})}$$
 
+where 
+
+- $H$: Hessian matrix and 
+- diag() extracts diagonal terms in a matrix
 ```{r, eval = FALSE}
 sqrt(diag(solve(m_fit$hessian)))
 ```
@@ -132,7 +134,7 @@ SE tells us about uncertainty
 
 Approximation:
 
-$$\text{CI}(\theta) \pm \theta_{\text{MLE}} + t_{\alpha/2} \text{SE}(\theta)$$
+$$\text{CI}(\theta) = \theta_{\text{MLE}} \pm t_{\alpha/2} \text{SE}(\theta)$$
 
 ```{r, eval = FALSE, echo = TRUE}
 # e.g., 95% confidence interval
@@ -162,7 +164,7 @@ The log likelihood profile is quadratic
 
 $$SE = \sqrt{\text{diag}(H^{-1})}$$
 
-$$\text{CI}(\theta) \pm \theta_{\text{MLE}} + t_{\alpha/2} \text{SE}(\theta)$$
+$$\text{CI}(\theta) = \theta_{\text{MLE}} \pm t_{\alpha/2} \text{SE}(\theta)$$
 
 # Deep connections to least squares
 
