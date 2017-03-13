@@ -1,0 +1,509 @@
+---
+title: "Evaluating linear model assumptions"
+author: "Max Joseph"
+date: "March 14, 2017"
+output:
+  beamer_presentation:
+    fonttheme: "structurebold"
+    fig_caption: false
+    fig_width: 6
+    fig_height: 4
+header-includes: 
+- \beamertemplatenavigationsymbolsempty
+- \definecolor{foreground}{RGB}{0,0,0}
+- \definecolor{background}{RGB}{255,255,255}
+- \definecolor{title}{RGB}{0,120,255}
+- \definecolor{gray}{RGB}{155,155,155}
+- \definecolor{subtitle}{RGB}{204,0,0}
+- \definecolor{hilight}{RGB}{102,255,204}
+- \definecolor{vhilight}{RGB}{255,111,207}
+- \setbeamercolor{titlelike}{fg=title}
+- \setbeamercolor{subtitle}{fg=subtitle}
+- \setbeamercolor{institute}{fg=gray}
+- \setbeamercolor{normal text}{fg=foreground,bg=background}
+- \setbeamercolor{local structure}{fg=title}
+- \setbeamertemplate{frametitle}{\begin{centering} \insertframetitle \par \end{centering}}
+---
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(fig.width = 4, fig.height = 2.5,
+                      fig.align = 'center', echo = FALSE,
+                      warning=FALSE, message=FALSE)
+library(tidyverse)
+library(gridExtra)
+library(purrr)
+theme_set(theme_minimal())
+```
+
+# Recap
+
+
+1. Linear relationship between $x$ and $y$: $$\hat{y_i} = \beta_0 + \beta_1 x_i$$ 
+1. Normal error in $y$ (variation around line): $$y_i \sim \text{Normal}(\hat{y_i}, \sigma)$$
+1. Homoskedasticity (errors have constant variance)
+1. Observations are independent
+
+# 
+
+```{r}
+rawd <- read_csv("http://esapubs.org/archive/ecol/E096/269/Data_Files/Amniote_Database_Aug_2015.csv", 
+              na = c("-999", "NA"))
+d <- rawd %>%
+  filter(order == "Rodentia") %>%
+  select(adult_body_mass_g, birth_or_hatching_weight_g) %>%
+  na.omit
+n <- nrow(d)
+x <- log(d$adult_body_mass_g)
+y <- log(d$birth_or_hatching_weight_g)
+
+p0 <- tibble(x, y) %>%
+  ggplot(aes(x, y)) + 
+  geom_point(size = .3) + 
+  xlab("log(Adult body mass)") + 
+  ylab("log(Birth weight)")
+p0 + 
+  geom_smooth(method = "lm", color = "dodgerblue", se = FALSE)
+```
+
+
+
+# Today: evaluating assumptions
+
+1. Linear relationship between $x$ and $y$: $$\hat{y_i} = \beta_0 + \beta_1 x_i$$ 
+1. Normal error in $y$ (variation around line): $$y_i \sim \text{Normal}(\hat{y_i}, \sigma)$$
+1. Homoskedasticity (errors have constant variance)
+1. Observations are independent
+
+# Evaluating linearity
+
+```{r}
+ynew1 <- rnorm(n, sin(x) + .8 * x - 2, .5)
+ynew2 <- rnorm(n, 0.8 * x - 2, .5)
+newd <- tibble(x = rep(x, times = 2), y = c(ynew1, ynew2), 
+       model = rep(c("sin(x) + 0.8x - 2 + error", "0.8x - 2 + error"), each = n), 
+       idx = rep(1:n, times = 2))
+
+newd %>%
+  ggplot(aes(x, y)) + 
+  geom_point(size = .3) + 
+  facet_wrap(~ model)
+```
+
+# Evaluating linearity
+
+```{r}
+newd %>%
+  ggplot(aes(x, y)) + 
+  geom_point(size = .3) + 
+  facet_wrap(~ model) + 
+  stat_smooth(method = "lm", se = FALSE)
+```
+
+# Adding residuals
+
+```{r}
+resid_df <- newd %>%
+  split(.$model) %>%
+  map(~ lm(y ~ x, data = .)) %>%
+  map(resid) %>%
+  bind_rows %>%
+  gather(model, residual) %>%
+  mutate(idx = rep(1:n, times = 2)) %>%
+  full_join(newd)
+resid_df %>%
+  ggplot(aes(x, y)) + 
+  geom_segment(aes(xend = x, yend = y - residual), color = "salmon", alpha = .5) + 
+  geom_point(size = .3) + 
+  facet_wrap(~ model) + 
+  stat_smooth(method = "lm", se = FALSE)
+```
+
+# Show residuals on y-axis
+
+```{r}
+full_df <- newd %>%
+  split(.$model) %>%
+  map(~ lm(y ~ x, data = .)) %>%
+  map(fitted) %>%
+  bind_rows %>%
+  gather(model, yhat) %>%
+  mutate(idx = rep(1:n, times = 2)) %>%
+  full_join(resid_df)
+full_df %>%
+  ggplot(aes(x, residual)) + 
+  geom_segment(aes(xend = x, yend = 0), color = "salmon", alpha = .5) + 
+  geom_point(size = .3) + 
+  facet_wrap(~ model) + 
+  geom_hline(yintercept = 0, color = "blue") + 
+  ylab(expression(epsilon))
+```
+
+# Look for patterns in the residuals
+
+```{r}
+full_df %>%
+  ggplot(aes(x, residual)) + 
+  geom_segment(aes(xend = x, yend = 0), color = "salmon", alpha = .5) + 
+  geom_point(size = .3) + 
+  stat_smooth(method = "loess", se = FALSE) + 
+  facet_wrap(~ model) + 
+  geom_hline(yintercept = 0, color = "blue") + 
+  ylab(expression(epsilon))
+```
+
+# A real example
+
+```{r}
+m <- lm(y ~ x)
+df_r <- tibble(x, y, fitted = fitted(m), resid = resid(m))
+p_ssr <- df_r %>%
+  ggplot(aes(x, y)) + 
+  geom_smooth(method = "lm", se = FALSE) + 
+  geom_segment(aes(xend = x, y = fitted, yend = resid + fitted), 
+               col = "salmon", alpha = .5, size = .3) + 
+  geom_point(size = .3) + 
+  xlab("log(Adult body mass)") + 
+  ylab("log(Birth weight)")
+p_ssr
+```
+
+# Rodent birth weight residuals
+
+```{r}
+df_r %>%
+  ggplot(aes(x, resid)) + 
+  geom_segment(aes(xend = x, yend = 0), color = "salmon", alpha = .5) + 
+  geom_point(size = .3) + 
+  stat_smooth(method = "loess", se = FALSE) + 
+  geom_hline(yintercept = 0, color = "blue") + 
+  ylab(expression(epsilon))
+```
+
+# Recap: evaluating linearity
+
+1. Plot x vs. y
+2. Plot x vs. $y - \hat{y}$ (residuals)
+
+# Evaluating homoskedasticity
+
+$$y_i \sim \text{Normal}(\hat{y}_i, \sigma)$$
+$$\hat{y}_i = \alpha_i + \beta x_i$$
+
+For all $y_i$, $\sigma$ is assumed constant
+
+$$\rightarrow$$ plot $y_i$ vs. residuals
+
+
+# Activity
+
+Drawing heteroskedasticity
+
+- pair up
+- draw 2 different cartoon examples of heteroskedasticity on the board in two coordinate systems (4 graphs total): 
+
+1. $x$ vs. $y$
+2. $\hat{y}$ vs. $\epsilon$
+
+
+
+
+
+
+
+# Evaluating homoskedasticity
+
+Simualted example
+
+```{r}
+p1 <- full_df %>%
+  filter(model == "0.8x - 2 + error") %>%
+  ggplot(aes(x, y)) + 
+  geom_point(size = .5) +
+  stat_smooth(method = "lm")
+
+p2 <- full_df %>%
+  filter(model == "0.8x - 2 + error") %>%
+  ggplot(aes(yhat, residual)) + 
+  geom_point(size = .5) + 
+  geom_hline(yintercept = 0, color = "blue") + 
+  ylab(expression(epsilon)) + 
+  ylim(-5, 5)
+
+grid.arrange(p1, p2, nrow = 1)
+```
+
+
+
+# Evaluating homoskedasticity
+
+Rodent example
+
+```{r}
+p1 <- df_r %>%
+  ggplot(aes(x, y)) + 
+  geom_point(size = .5) + 
+  stat_smooth(method = "lm")
+p2 <- df_r %>%
+  ggplot(aes(fitted, resid)) + 
+  geom_point(size = .5) + 
+  geom_hline(yintercept = 0, color = "blue") + 
+  ylab(expression(epsilon)) + 
+  xlab("yhat") + 
+  ylim(-5, 5)
+
+grid.arrange(p1, p2, nrow = 1)
+```
+
+# Pearson residuals
+
+Rescaling $\rightarrow$ force standard deviation = 1
+
+$$\epsilon_\text{p} = \epsilon / \hat\sigma$$
+
+```{r}
+p3 <- df_r %>%
+  ggplot(aes(fitted, resid / sigma(m))) + 
+  geom_point(size = .5) + 
+  geom_hline(yintercept = 0, color = "blue") + 
+  ylab(expression(epsilon[p])) + 
+  xlab("yhat") + 
+  ylim(-5, 5)
+
+grid.arrange(p2, p3, nrow = 1)
+```
+
+# Dealing with heteroskedasticity
+
+Most of the time: 
+
+- figure out what is causing the extra variation and model it
+
+# Example: Rodents in different families
+
+```{r, fig.width = 4.5, fig.height = 3}
+orders <- rawd %>%
+  filter(order == "Rodentia") %>%
+  select(birth_or_hatching_weight_g, adult_body_mass_g, family) %>%
+  na.omit %>%
+  group_by(family) %>%
+  summarize(n = n()) %>%
+  filter(n > 9)
+
+rawd %>%
+  filter(order == "Rodentia", family %in% orders$family) %>%
+  select(birth_or_hatching_weight_g, adult_body_mass_g, family) %>%
+  na.omit %>%
+  ggplot(aes(x = birth_or_hatching_weight_g, adult_body_mass_g, 
+             color = family)) + 
+  geom_point(size = .4) + 
+  scale_x_log10() + 
+  scale_y_log10() + 
+  stat_smooth(se = FALSE, method = "lm") + 
+  scale_color_brewer(palette = "Set1", "Family") + 
+  xlab("Birth weight") + 
+  ylab("Body mass")
+```
+
+# Transformations of $y$
+
+- $\log(y)$: variance increases with $\hat{y}$
+- $y^{1/c}$: variance increases with $\hat{y}$
+- $y^c$: variance decreases with $\hat{y}$
+
+
+# Problems with transformations
+
+1. Inflexible
+2. Consequences for model interpretation
+
+**Natural scale**
+
+$$\hat{y} = \alpha + \beta x$$
+
+**Log scale**
+
+$$\log(\hat{y}) = \alpha + \beta x$$
+
+$$\rightarrow \hat{y} = e^{\alpha} e^{\beta x}$$
+
+# Recap: evaluating homoskedasticity
+
+**Diagnostics**
+
+- plot $\hat{y}$ vs. $\epsilon$ and look for "funnels"
+
+**Solutions**
+
+- model the source of extra variance
+- consider transformations
+
+# Last: evaluating normality
+
+```{r}
+p_ssr
+```
+
+# Histogram of residuals
+
+Simulated data
+
+```{r}
+full_df %>%
+  filter(model == "0.8x - 2 + error") %>%
+  ggplot(aes(residual)) + 
+  geom_histogram(bins = 30) + 
+  xlab("Residuals") + 
+  ylab("Count")
+```
+
+
+# Histogram of residuals
+
+Rodent data
+
+```{r}
+df_r %>%
+  ggplot(aes(resid)) + 
+  geom_histogram(bins = 30) + 
+  xlab("Residuals") + 
+  ylab("Count")
+```
+
+# Common misconception
+
+The normality assumption should be checked for $y$:
+
+```{r}
+p1 <- full_df %>%
+  filter(model == "0.8x - 2 + error") %>%
+  ggplot(aes(x, y)) + 
+  geom_point(size = .5) +
+  stat_smooth(method = "lm")
+
+p2 <- full_df %>%
+  filter(model == "0.8x - 2 + error") %>%
+  ggplot(aes(y)) + 
+  geom_histogram(bins = 30) + 
+  xlab("y") + 
+  ylab("Count")
+
+grid.arrange(p1, p2, nrow = 1)
+```
+
+# Crux
+
+**Normality assumption applies to:**
+
+## Error
+
+$y_i = \alpha + \beta x + \epsilon_i$
+
+$\epsilon_i \sim \text{Normal}(0, \sigma)$
+
+## $y$ after adjusting for the effect of $x$
+
+$y_i \sim \text{Normal}(\alpha + \beta x, \sigma)$
+
+## but NOT $y$ alone.
+
+# Simple example
+
+$$y_i = 10x_i + \epsilon_i$$
+
+```{r}
+n_each <- 3000
+x_adv <- plogis(rnorm(n_each, 0, 10))
+y_adv <- rnorm(length(x_adv), mean = 10 * x_adv, sd = 1)
+
+d_adv <- tibble(x = x_adv, y = y_adv)
+
+d_adv %>%
+  ggplot(aes(x, y)) + 
+  geom_point(size = .3) + 
+  stat_smooth(method = "lm", se = FALSE)
+```
+
+# Plotting residuals
+
+$$y_i = 10x_i + \epsilon_i$$
+
+```{r}
+m_adv <- lm(y ~ x, data = d_adv)
+
+d_adv$fitted <- fitted(m_adv)
+d_adv$resid <- resid(m_adv)
+
+p1a <- d_adv %>%
+  ggplot(aes(x, y)) + 
+  geom_segment(aes(xend = x, y = fitted, yend = y), color = "salmon", size = .5) +
+  geom_point(size = .3) + 
+  stat_smooth(method = "lm", se = FALSE)
+p1a
+```
+
+# Distribution of residuals
+
+$$y_i = 10x_i + \epsilon_i$$
+
+
+```{r}
+p2a <- d_adv %>%
+  ggplot(aes(resid)) + 
+  geom_histogram(fill = "salmon", bins = 50) + 
+  xlab("Residuals") + 
+  ylab("Count")
+p2a
+```
+
+# Distribution of $y$
+
+$$y_i = 10x_i + \epsilon_i$$
+
+```{r}
+p3a <- d_adv %>%
+  ggplot(aes(y)) + 
+  geom_histogram(bins = 50) + 
+  ylab("Count")
+p3a
+```
+
+# All together now
+
+```{r}
+grid.arrange(p1a, arrangeGrob(p2a, p3a, nrow = 1), nrow = 2)
+```
+
+# Quantile plots (Q-Q plots)
+
+Another tool for evaluating residual normality
+
+- compare quantiles of (Pearson) residuals to Normal quantiles
+
+
+# `qqnorm(pearson_resid)`
+
+```{r}
+pearson_resid <- full_df$residual / sigma(lm(y ~ x, data = full_df))
+```
+
+
+```{r, fig.height = 3, fig.width = 3.5}
+qqnorm(pearson_resid)
+abline(0, 1, col = "red")
+```
+
+# What to do when Normality fails
+
+**Generalized linear models (GLM)**
+
+- counts
+- proportions
+- zero-inflation
+- long tails
+- and more!
+
+
+
+# Evaluating assumptions for the rodent data
+
+*Demo*: `3-model-checking/checking-assumptions.R`

@@ -25,3 +25,4 @@ vignettes/*.pdf
 .Rproj.user
 biometry-linear-models.Rproj
 quizzes
+.DS_Store
