@@ -184,6 +184,20 @@ df_r %>%
 1. Plot x vs. y
 2. Plot x vs. $y - \hat{y}$ (residuals)
 
+# Solution: what to do with nonlinearity
+
+Model it!
+
+```{r}
+full_df %>%
+  ggplot(aes(x, y)) + 
+  geom_point() + 
+  geom_smooth() + 
+  facet_wrap(~ model)
+```
+
+
+
 # Evaluating homoskedasticity
 
 $$y_i \sim \text{Normal}(\hat{y}_i, \sigma)$$
@@ -334,8 +348,8 @@ $$\rightarrow \hat{y} = e^{\alpha} e^{\beta x}$$
 
 **Solutions**
 
-- model the source of extra variance
-- consider transformations
+1. Model the source of extra variance
+1. Consider transformations
 
 # Last: evaluating normality
 
@@ -496,11 +510,29 @@ abline(0, 1, col = "red")
 
 **Generalized linear models (GLM)**
 
+Allow you to build models with other distributions
+
 - counts
 - proportions
 - zero-inflation
 - long tails
 - and more!
+
+# Zooming out
+
+**Assumptions**
+
+1. Linear relationship between $x$ and $y$: $$\hat{y_i} = \beta_0 + \beta_1 x_i$$ 
+1. Normal error in $y$ (variation around line): $$y_i \sim \text{Normal}(\hat{y_i}, \sigma)$$
+1. Homoskedasticity (errors have constant variance)
+1. Observations are independent
+
+**If assumptions are violated**
+
+1. Adjust your model*
+2. Try to coerce your data to match assumptions
+
+
 
 
 

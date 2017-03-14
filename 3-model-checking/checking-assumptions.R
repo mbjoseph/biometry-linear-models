@@ -94,19 +94,25 @@ R2 <- 1 - SSR / SST
 
 # plotting x vs. epsilon
 
-
+epsilon <- y - yhat
+plot(x, epsilon)
 
 # Evaluate homoskedasticity -----------------------------------------------
 
 # plot yhat vs. epsilon
 
-
+plot(yhat, epsilon)
 
 # Evaluate normality ------------------------------------------------------
 
 # plot histogram of epsilon
 
+hist(epsilon, breaks = 40)
+
 
 # make a q-q plot with pearson residuals
+sigma_hat <- exp(m_fit$par[3])
+pearson_resid <- epsilon / sigma_hat
 
-
+qqnorm(pearson_resid)
+abline(0, 1, col = "red")
