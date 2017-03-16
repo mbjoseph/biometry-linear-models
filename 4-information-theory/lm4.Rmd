@@ -360,3 +360,148 @@ $\rightarrow$ multiply log likelihood by -2.
 
 *demo
 
+# The problem with Deviance
+
+New predictors improve (reduce) deviance
+
+- same problem as $R^2$
+
+```{r}
+# split into training and test sets
+trees$train <- rep_len(c(0, 1), nrow(trees))
+train <- subset(trees, train == 1)
+test <- subset(trees, train == 0)
+
+
+m1 <- lm(Volume ~ Girth, data = train)
+m1dev <- -2 * logLik(m1)
+train %>%
+  ggplot(aes(Girth, Volume)) + 
+  stat_smooth(method = "lm", formula = y ~ poly(x, 1), se = FALSE) + 
+  geom_point() + 
+  ggtitle(paste("Deviance:", round(m1dev, 3)))
+```
+
+# The problem with Deviance
+
+New predictors improve (reduce) deviance
+
+- same problem as $R^2$
+
+```{r}
+# use an 8th degree polynomial
+m <- lm(Volume ~ poly(Girth, 8), data = train)
+mdev <- -2 * logLik(m)
+train %>%
+  ggplot(aes(Girth, Volume)) + 
+  stat_smooth(method = "lm", formula = y ~ poly(x, 8), se = FALSE) + 
+  geom_point() + 
+  ggtitle(paste("Deviance:", round(mdev, 3)))
+```
+
+# At the end of the day
+
+We want to be close to the **truth** but not too close to our training **data**
+
+# We want to make good predictions
+
+In other words, we'd like low deviance for **new** observations
+
+Deviance of training data ($q_1, q_2, ...$):
+
+$$D_{\text{train}}(q) = -2 \sum_i log(q_i)$$
+
+Deviance of future data ($\tilde{q}_1, \tilde{q}_2, ...$):
+
+$$D_{\text{test}}(q) = -2 \sum_i log(\tilde{q}_i)$$
+
+# Evaluating deviance of the training and test set
+
+```{r}
+dev_plot <- function(degree) {
+  m <- lm(Volume ~ poly(Girth, degree), data = train)
+  train_dev <- -2 * logLik(m)
+  xline <- data.frame(Girth = seq(min(trees$Girth), 
+                                  max(trees$Girth), 
+                                  length.out = 100))
+  xline$Volume <- predict(m, xline)
+  
+  mu_test <- predict(m, test)
+  test_ll <- sum(dnorm(train$Volume, mu_test, sigma(m), log = TRUE))
+  test_dev <- -2 * test_ll
+  
+  p <- train %>%
+    ggplot(aes(Girth, Volume)) + 
+    geom_line(data = xline, color = "dodgerblue") + 
+    geom_point() + 
+    ggtitle(paste0("Training deviance: ", round(train_dev, 3), ";    ",
+                  "Test deviance: ", round(test_dev, 3))) + 
+    geom_point(data = test, color = "purple")
+  list(p, dev_df = tibble(Deviance = c(train_dev, test_dev), 
+                          Sample = c("Training set", "Test set")))
+}
+
+dev_plot(1)[[1]]
+# Check training deviance values
+```
+
+# Evaluating deviance of the training and test set
+
+```{r}
+dev_plot(2)[[1]]
+```
+
+
+# Evaluating deviance of the training and test set
+
+```{r}
+dev_plot(3)[[1]]
+```
+
+# Evaluating deviance of the training and test set
+
+```{r}
+dev_plot(4)[[1]]
+```
+
+# Evaluating deviance of the training and test set
+
+```{r}
+dev_plot(5)[[1]]
+```
+
+
+# Training and test deviance across a range of model complexity
+
+```{r}
+l <- list()
+for (i in 1:5) {
+  l[[i]] <- dev_plot(i)[[2]]
+}
+
+bind_rows(l, .id = "Polynomial degree") %>%
+  ggplot(aes(`Polynomial degree`, Deviance, color = Sample)) + 
+  geom_point() + 
+  scale_y_log10() + 
+  scale_color_manual(values = c("red", "blue"), "")
+```
+
+# Some problems with training vs. test splits
+
+1. How to decide what goes where?
+2. What if you have a small dataset?
+3. What is your data are structured (e.g., by spatial location)
+
+# Enter AIC
+
+Instead of computing $D_{\text{test}}$, approximate with 
+
+## Akaike's information criterion
+
+$$AIC = D_{\text{train}} + 2p$$
+  
+- $D_{\text{train}}$ is your training set deviance
+- $p$ is the number of parameters in your model
+
+"Better" models have lower $AIC$
+  
