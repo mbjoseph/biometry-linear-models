@@ -1,0 +1,362 @@
+---
+title: "The problem with parameters: using information theory to evaluate models"
+author: "Max Joseph"
+date: "March 16, 2017"
+output:
+  beamer_presentation:
+    fonttheme: "structurebold"
+    fig_caption: false
+    fig_width: 6
+    fig_height: 4
+header-includes: 
+- \beamertemplatenavigationsymbolsempty
+- \definecolor{foreground}{RGB}{0,0,0}
+- \definecolor{background}{RGB}{255,255,255}
+- \definecolor{title}{RGB}{0,120,255}
+- \definecolor{gray}{RGB}{155,155,155}
+- \definecolor{subtitle}{RGB}{204,0,0}
+- \definecolor{hilight}{RGB}{102,255,204}
+- \definecolor{vhilight}{RGB}{255,111,207}
+- \setbeamercolor{titlelike}{fg=title}
+- \setbeamercolor{subtitle}{fg=subtitle}
+- \setbeamercolor{institute}{fg=gray}
+- \setbeamercolor{normal text}{fg=foreground,bg=background}
+- \setbeamercolor{local structure}{fg=title}
+- \setbeamertemplate{frametitle}{\begin{centering} \insertframetitle \par \end{centering}}
+---
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(fig.width = 4, fig.height = 2.5,
+                      fig.align = 'center', echo = FALSE,
+                      warning = FALSE, message = FALSE)
+library(tidyverse)
+library(gridExtra)
+library(purrr)
+theme_set(theme_minimal())
+```
+
+# $\hat{y} = \beta_0 + \beta_1 x$
+
+```{r}
+n <- 10
+x <- rnorm(n, 0, 2)
+y <- rnorm(n, x + .4 * x^3, 1.5)
+d <- tibble(x, y)
+
+dnew <- tibble(x = runif(100, min(x), max(x))) %>%
+  mutate(y = rnorm(100, x + .4 * x^3, 1.5))
+
+d %>%
+  ggplot(aes(x, y)) + 
+  geom_point() + 
+  geom_smooth(size = .5, method = "lm", se = FALSE)
+```
+
+# $\hat{y} = \beta_0 + \beta_1 x + \beta_2 x^2$
+
+```{r}
+d %>%
+  ggplot(aes(x, y)) + 
+  geom_point() + 
+  geom_smooth(size = .5, method = "lm", se = FALSE, formula = y ~ poly(x, 2))
+```
+
+
+# $\hat{y} = \beta_0 + \beta_1 x + \beta_2 x^2 + \beta_3 x^3$
+
+```{r}
+d %>%
+  ggplot(aes(x, y)) + 
+  geom_point() + 
+  geom_smooth(size = .5, method = "lm", se = FALSE, formula = y ~ poly(x, 3))
+```
+
+
+# $\hat{y} = \beta_0 + \beta_1 x + \beta_2 x^2 + \beta_3 x^3 + \beta_4 x^4$
+
+```{r}
+d %>%
+  ggplot(aes(x, y)) + 
+  geom_point() + 
+  geom_smooth(size = .5, method = "lm", se = FALSE, formula = y ~ poly(x, 4))
+```
+
+# $\hat{y} = \beta_0 + \beta_1 x + \beta_2 x^2 + \beta_3 x^3 + \beta_4 x^4 + \beta_5 x^5$
+
+```{r}
+d %>%
+  ggplot(aes(x, y)) + 
+  geom_point() + 
+  geom_smooth(size = .5, method = "lm", se = FALSE, formula = y ~ poly(x, 5))
+```
+
+# $\hat{y} = \beta_0 + \beta_1 x + \beta_2 x^2 + \beta_3 x^3 + \beta_4 x^4 + \beta_5 x^5 + \beta_6 x^6$
+
+```{r}
+d %>%
+  ggplot(aes(x, y)) + 
+  geom_point() + 
+  geom_smooth(size = .5, method = "lm", se = FALSE, formula = y ~ poly(x, 6))
+```
+
+# $\hat{y} = \beta_0 + \beta_1 x + \beta_2 x^2 + \beta_3 x^3 + \beta_4 x^4 + \beta_5 x^5 + \beta_6 x^6 + \beta_7 x^7$
+
+```{r}
+d %>%
+  ggplot(aes(x, y)) + 
+  geom_point() + 
+  geom_smooth(size = .5, method = "lm", se = FALSE, formula = y ~ poly(x, 7))
+```
+
+# $\hat{y} = \beta_0 + \beta_1 x + \beta_2 x^2 + \beta_3 x^3 + \beta_4 x^4 + \beta_5 x^5 + \beta_6 x^6 + \beta_7 x^7 + \beta_8 x^8$
+
+```{r}
+d %>%
+  ggplot(aes(x, y)) + 
+  geom_point() + 
+  geom_smooth(size = .5, method = "lm", se = FALSE, formula = y ~ poly(x, 8))
+```
+
+# $\hat{y} = \beta_0 + \beta_1 x + \beta_2 x^2 + \beta_3 x^3 + \beta_4 x^4 + \beta_5 x^5 + \beta_6 x^6 + \beta_7 x^7 + \beta_8 x^8 + \beta_9 x^9$
+
+```{r}
+d %>%
+  ggplot(aes(x, y)) + 
+  geom_point() + 
+  geom_smooth(size = .5, method = "lm", se = FALSE, formula = y ~ poly(x, 9))
+```
+
+# Overfitting
+
+Parameters begin to fit to **noise**
+
+- good fit to **training data**
+- bad predictions for out of sample data
+
+
+
+# $\hat{y} = \beta_0 + \beta_1 x$
+
+```{r}
+d %>%
+  ggplot(aes(x, y)) + 
+  geom_point(alpha = .1) + 
+  geom_smooth(size = .5, method = "lm", se = FALSE) + 
+  geom_point(data = dnew, color = "purple")
+```
+
+# $\hat{y} = \beta_0 + \beta_1 x + \beta_2 x^2$
+
+```{r}
+d %>%
+  ggplot(aes(x, y)) + 
+  geom_point(alpha = .1) + 
+  geom_smooth(size = .5, method = "lm", se = FALSE, formula = y ~ poly(x, 2)) + 
+  geom_point(data = dnew, color = "purple")
+```
+
+
+# $\hat{y} = \beta_0 + \beta_1 x + \beta_2 x^2 + \beta_3 x^3$
+
+```{r}
+d %>%
+  ggplot(aes(x, y)) + 
+  geom_point(alpha = .1) + 
+  geom_smooth(size = .5, method = "lm", se = FALSE, formula = y ~ poly(x, 3)) + 
+  geom_point(data = dnew, color = "purple")
+```
+
+
+# $\hat{y} = \beta_0 + \beta_1 x + \beta_2 x^2 + \beta_3 x^3 + \beta_4 x^4$
+
+```{r}
+d %>%
+  ggplot(aes(x, y)) + 
+  geom_point(alpha = .1) + 
+  geom_smooth(size = .5, method = "lm", se = FALSE, formula = y ~ poly(x, 4)) + 
+  geom_point(data = dnew, color = "purple")
+```
+
+# $\hat{y} = \beta_0 + \beta_1 x + \beta_2 x^2 + \beta_3 x^3 + \beta_4 x^4 + \beta_5 x^5$
+
+```{r}
+d %>%
+  ggplot(aes(x, y)) + 
+  geom_point(alpha = .1) + 
+  geom_smooth(size = .5, method = "lm", se = FALSE, formula = y ~ poly(x, 5)) + 
+  geom_point(data = dnew, color = "purple")
+```
+
+# $\hat{y} = \beta_0 + \beta_1 x + \beta_2 x^2 + \beta_3 x^3 + \beta_4 x^4 + \beta_5 x^5 + \beta_6 x^6$
+
+```{r}
+d %>%
+  ggplot(aes(x, y)) + 
+  geom_point(alpha = .1) + 
+  geom_smooth(size = .5, method = "lm", se = FALSE, formula = y ~ poly(x, 6)) + 
+  geom_point(data = dnew, color = "purple")
+```
+
+# $\hat{y} = \beta_0 + \beta_1 x + \beta_2 x^2 + \beta_3 x^3 + \beta_4 x^4 + \beta_5 x^5 + \beta_6 x^6 + \beta_7 x^7$
+
+```{r}
+d %>%
+  ggplot(aes(x, y)) + 
+  geom_point(alpha = .1) + 
+  geom_smooth(size = .5, method = "lm", se = FALSE, formula = y ~ poly(x, 7)) + 
+  geom_point(data = dnew, color = "purple")
+```
+
+# $\hat{y} = \beta_0 + \beta_1 x + \beta_2 x^2 + \beta_3 x^3 + \beta_4 x^4 + \beta_5 x^5 + \beta_6 x^6 + \beta_7 x^7 + \beta_8 x^8$
+
+```{r}
+d %>%
+  ggplot(aes(x, y)) + 
+  geom_point(alpha = .1) + 
+  geom_smooth(size = .5, method = "lm", se = FALSE, formula = y ~ poly(x, 8)) + 
+  geom_point(data = dnew, color = "purple")
+```
+
+# $\hat{y} = \beta_0 + \beta_1 x + \beta_2 x^2 + \beta_3 x^3 + \beta_4 x^4 + \beta_5 x^5 + \beta_6 x^6 + \beta_7 x^7 + \beta_8 x^8 + \beta_9 x^9$
+
+```{r}
+d %>%
+  ggplot(aes(x, y)) + 
+  geom_point(alpha = .1) + 
+  geom_smooth(size = .5, method = "lm", se = FALSE, formula = y ~ poly(x, 9)) + 
+  geom_point(data = dnew, color = "purple")
+```
+
+# Underfitting
+
+Model is too simplistic to capture signal
+
+```{r}
+d %>%
+  ggplot(aes(x, y)) + 
+  geom_point(alpha = .1) + 
+  geom_smooth(size = .5, method = "lm", se = FALSE) + 
+  geom_point(data = dnew, color = "purple")
+```
+
+# Today
+
+Working toward **information criteria** to balance: 
+
+- model complexity
+- out of sample predictive power
+
+# Roadmap
+
+1. Information entropy
+2. Kullback-Leiber divergence
+3. Deviance
+4. Akaike's information criterion
+
+# Information entropy
+
+Uncertainty contained in a probability distribution 
+
+$$H(p) = - \sum_{i = 1}^{n} p_i \log(p_i)$$
+
+- $H(p)$: information entropy of a distribution $p$
+- $n$: the number of possible outcomes
+- $p_i$: the probability of outcome $i$
+
+# Activity
+
+Compute the information entropy for your die!
+
+$$H(p) = - \sum_{i = 1}^{n} p_i \log(p_i)$$
+
+# What if we didn't know anything about dice?
+
+Find an estimate of information entropy:
+
+1. Estimate $p_1, p_2, p_3, ...$
+
+2. Compute information entropy of your estimated distribution:
+
+$$H(\hat{p}) = - \sum_{i = 1}^{n} \hat{p}_i \log(\hat{p}_i)$$
+
+# Divergence
+
+How far off is our model from the true distribution?
+
+**Example**
+
+We used $\hat{p}$ to estimate $p$
+
+- What's the "divergence" between $\hat{p}$ and $p$?
+
+# Kullback-Leibler divergence
+
+How far off is our model $q$ from the true distribution $p$?
+
+$$D_{\text{KL}} = \sum_{i=1}^n p_i \log \Big(\frac{p_i}{q_i}\Big)$$
+
+# Activity
+
+Calculate KL divergence for the following sample sizes: 
+
+- 5
+- 10
+- 20
+- 1000
+
+$$D_{\text{KL}} = \sum_{i=1}^n p_i (\log (p_i) - \log(q_i))$$
+
+* Average difference in log probability between $p$ and $q$
+
+**Bonus** 
+
+What happens when our approximation $q$ is exactly the same as $p$?
+
+# The problem with reality
+
+We almost never know the true probability of events!
+
+# What *do* we have
+
+Typically we have data $y_1, y_2, ..., y_n$
+
+and some models (let's say two) 
+
+$$q, r$$
+
+**So we can ask**
+
+Which model seems closer to the true distribution $p$?
+
+$$D_{\text{KL}}(p, q) - D_{\text{KL}}(p, r) = -(E \log(q_i) - E \log(r_i))$$
+
+# Comparing models $q$ and $r$
+
+
+$$D_{\text{KL}}(p, q) - D_{\text{KL}}(p, r) = -(E \log(q_i) - E \log(r_i))$$
+
+**Notice that we don't need $p$ to compute this difference!**
+
+# Deviance 
+
+$$D_{\text{KL}}(p, q) - D_{\text{KL}}(p, r) = -(E \log(q_i) - E \log(r_i))$$
+
+We can plug in something proportional to the expected log likelihood:
+
+$$E \log(q_i) \propto$$ 
+
+$$D(q) = -2 \sum_{i = 1}^n log(q_i)$$
+
+where $D(q)$ is the **Deviance**
+
+
+# How to calculate deviance
+
+$$D(q) = -2 \sum_{i = 1}^n log(q_i)$$
+
+Log likelihood: $\sum_{i = 1}^n log(q_i)$
+
+$\rightarrow$ multiply log likelihood by -2.
+
+*demo
+
