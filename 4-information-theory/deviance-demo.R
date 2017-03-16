@@ -7,7 +7,7 @@ str(trees)
 # split into training and test sets
 trees$train <- rep_len(c(0, 1), nrow(trees))
 train <- subset(trees, train == 1)
-test <- subset(trees, train == 1)
+test <- subset(trees, train == 0)
 
 # visualize our data
 plot(x = trees$Girth, 
@@ -30,10 +30,14 @@ m1 <- lm(Volume ~ poly(Girth, 1), data = train)
 m2 <- lm(Volume ~ poly(Girth, 2), data = train)
 
 # compute deviance for both models: -2 * sum(loglik)
-
+D1 <- -2 * logLik(m1)
+D2 <- -2 * logLik(m2)
 
 # add predictors to the model and compare deviance
+train$junk <- rnorm(15)
 
-
+m3 <- lm(Volume ~ poly(Girth, 2) + junk, data = train)
+D3 <- -2 * logLik(m3)
 
 # compare the three models with AIC
+AIC(m1)

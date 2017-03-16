@@ -248,8 +248,10 @@ Working toward **information criteria** to balance:
 
 # Roadmap
 
+**Finding a way to compare models**
+
 1. Information entropy
-2. Kullback-Leiber divergence
+2. Kullback-Leibler divergence
 3. Deviance
 4. Akaike's information criterion
 
