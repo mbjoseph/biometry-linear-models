@@ -302,7 +302,6 @@ Calculate KL divergence for the following sample sizes:
 - 5
 - 10
 - 20
-- 1000
 
 $$D_{\text{KL}} = \sum_{i=1}^n p_i (\log (p_i) - \log(q_i))$$
 
@@ -310,7 +309,8 @@ $$D_{\text{KL}} = \sum_{i=1}^n p_i (\log (p_i) - \log(q_i))$$
 
 **Bonus** 
 
-What happens when our approximation $q$ is exactly the same as $p$?
+- What happens when you draw 1000 samples?
+- What happens when our approximation $q$ is exactly the same as $p$?
 
 # The problem with reality
 
@@ -348,6 +348,16 @@ $$E \log(q_i) \propto$$
 $$D(q) = -2 \sum_{i = 1}^n log(q_i)$$
 
 where $D(q)$ is the **Deviance**
+
+
+# Deviance in plain english
+
+$$D(q) = -2 \sum_{i = 1}^n log(q_i)$$
+
+A relative measure of divergence from the true distribution $p$
+
+- one deviance value is useless
+- multiple values allow us to compare models
 
 
 # How to calculate deviance
@@ -504,4 +514,14 @@ $$AIC = D_{\text{train}} + 2p$$
 - $p$ is the number of parameters in your model
 
 "Better" models have lower $AIC$
+  
+# Recap:
+
+1. Over vs. underfitting
+2. Measured how close a model $q$ is to truth $p$ (KL divergence)
+3. Realized that since we don't know truth, we need a **relative** measure
+4. Learned that $AIC$ is that relative measure
+- how well can a model predict new data? 
+
+$$AIC = D_{\text{train}} + 2p$$
   
