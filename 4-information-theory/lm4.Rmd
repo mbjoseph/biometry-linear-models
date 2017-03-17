@@ -427,7 +427,7 @@ Deviance of future data ($\tilde{q}_1, \tilde{q}_2, ...$):
 
 $$D_{\text{test}}(q) = -2 \sum_i log(\tilde{q}_i)$$
 
-# Evaluating deviance of the training and test set
+# Deviance of the training and test set
 
 ```{r}
 dev_plot <- function(degree) {
@@ -448,7 +448,8 @@ dev_plot <- function(degree) {
     geom_point() + 
     ggtitle(paste0("Training deviance: ", round(train_dev, 3), ";    ",
                   "Test deviance: ", round(test_dev, 3))) + 
-    geom_point(data = test, color = "purple")
+    geom_point(data = test, color = "purple") + 
+    theme(plot.title = element_text(size = rel(.8)))
   list(p, dev_df = tibble(Deviance = c(train_dev, test_dev), 
                           Sample = c("Training set", "Test set")))
 }
@@ -457,26 +458,26 @@ dev_plot(1)[[1]]
 # Check training deviance values
 ```
 
-# Evaluating deviance of the training and test set
+# Deviance of the training and test set
 
 ```{r}
 dev_plot(2)[[1]]
 ```
 
 
-# Evaluating deviance of the training and test set
+# Deviance of the training and test set
 
 ```{r}
 dev_plot(3)[[1]]
 ```
 
-# Evaluating deviance of the training and test set
+# Deviance of the training and test set
 
 ```{r}
 dev_plot(4)[[1]]
 ```
 
-# Evaluating deviance of the training and test set
+# Deviance of the training and test set
 
 ```{r}
 dev_plot(5)[[1]]
@@ -502,7 +503,7 @@ bind_rows(l, .id = "Polynomial degree") %>%
 
 1. How to decide what goes where?
 2. What if you have a small dataset?
-3. What is your data are structured (e.g., by spatial location)
+3. What if your data are structured (e.g., by spatial location)
 
 # Enter AIC
 
